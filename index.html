@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generador SEO Metadata</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root {
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --border: #e4e2dc;
+    --border-mid: #d0cec7;
+    --text: #1a1917;
+    --text-muted: #6b6860;
+    --text-faint: #9e9b94;
+    --accent: #1a1917;
+    --ok-bg: #eaf3de; --ok-text: #27500a;
+    --warn-bg: #faeeda; --warn-text: #633806;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --radius: 10px;
+    --radius-lg: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; }
+
+  .app { max-width: 900px; margin: 0 auto; padding: 48px 24px 80px; }
+
+  header { margin-bottom: 48px; }
+  header h1 { font-size: 28px; font-weight: 500; letter-spacing: -0.5px; margin-bottom: 6px; }
+  header p { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+  .tag { display: inline-block; font-size: 11px; padding: 3px 9px; border-radius: 20px; background: var(--border); color: var(--text-muted); font-family: var(--mono); margin-bottom: 14px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 16px; }
+  .card-title { font-size: 12px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; }
+
+  label { font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px; }
+  input[type=text], textarea, select {
+    width: 100%; padding: 10px 13px; font-size: 14px;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--bg); color: var(--text);
+    font-family: var(--sans); transition: border .15s;
+  }
+  input[type=text]:focus, textarea:focus, select:focus { outline: none; border-color: var(--border-mid); background: #fff; }
+  textarea { resize: vertical; font-family: var(--mono); font-size: 12px; line-height: 1.7; }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .field { margin-bottom: 14px; }
+
+  .drop-zone {
+    border: 1.5px dashed var(--border-mid); border-radius: var(--radius-lg);
+    padding: 36px 20px; text-align: center; cursor: pointer;
+    transition: background .15s, border-color .15s;
+  }
+  .drop-zone:hover, .drop-zone.over { background: #f0ede8; border-color: #b5b2aa; }
+  .drop-zone .icon { font-size: 28px; margin-bottom: 10px; }
+  .drop-zone p { font-size: 14px; color: var(--text-muted); margin-bottom: 4px; }
+  .drop-zone small { font-size: 12px; color: var(--text-faint); }
+
+  .preview-code {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px 14px; font-size: 12px; font-family: var(--mono);
+    line-height: 1.8; color: var(--text-muted); white-space: pre;
+  }
+
+  button {
+    padding: 9px 20px; border-radius: var(--radius);
+    border: 1px solid var(--border-mid); background: transparent;
+    color: var(--text); font-size: 13px; cursor: pointer;
+    font-family: var(--sans); font-weight: 400; transition: background .15s;
+  }
+  button:hover { background: var(--border); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: #fff; border-color: transparent; }
+  .btn-primary:hover { background: #333; }
+  .btn-sm { padding: 5px 11px; font-size: 12px; }
+
+  .btn-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 18px; }
+
+  .step-indicator {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: var(--text-muted); margin-bottom: 6px;
+  }
+  .step-num {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 500; flex-shrink: 0;
+  }
+
+  .progress-wrap { height: 4px; background: var(--border); border-radius: 4px; margin: 10px 0 4px; }
+  .progress-bar { height: 4px; border-radius: 4px; background: var(--accent); transition: width .3s; }
+
+  .tbl-wrap { overflow-x: auto; margin-top: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+  th { text-align: left; padding: 9px 12px; font-size: 11px; font-weight: 500; color: var(--text-muted); border-bottom: 1px solid var(--border); background: var(--bg); }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: top; word-break: break-word; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #faf9f7; }
+
+  .col-url { width: 14%; } .col-kw { width: 11%; } .col-title { width: 18%; } .col-h1 { width: 18%; } .col-desc { width: 24%; } .col-st { width: 8%; } .col-act { width: 7%; }
+
+  .badge { display: inline-block; font-size: 10px; padding: 3px 8px; border-radius: 20px; font-weight: 500; }
+  .b-ok { background: var(--ok-bg); color: var(--ok-text); }
+  .b-warn { background: var(--warn-bg); color: var(--warn-text); }
+
+  .char-note { font-size: 11px; margin-top: 4px; }
+  .ok-c { color: #3b6d11; } .warn-c { color: #854f0b; }
+
+  .brand-preview { font-size: 12px; color: var(--text-faint); font-family: var(--mono); margin-top: 6px; }
+  .brand-preview span { color: var(--text); }
+
+  .summary-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 10px; margin-bottom: 14px;
+  }
+  .summary-bar .label { font-size: 14px; font-weight: 500; }
+
+  .hint { font-size: 12px; color: var(--text-faint); margin-top: 6px; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeIn .25s ease both; }
+
+  .inline-link { color: var(--text-muted); font-size: 12px; text-decoration: underline; cursor: pointer; background: none; border: none; padding: 0; font-family: var(--sans); }
+  .inline-link:hover { color: var(--text); background: none; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="tag">Generador SEO Metadata</div>
+    <h1>Metadata SEO con IA</h1>
+    <p>Carga un CSV con URLs y keywords, define la marca, envía el prompt a Claude y carga la respuesta para obtener titles, descriptions y H1 optimizados.</p>
+  </header>
+
+  <!-- STEP 1: Upload -->
+  <div id="step-upload" class="fade-in">
+    <div class="card">
+      <div class="card-title">Formato del CSV</div>
+      <div class="preview-code">url,keyword
+https://tusitio.cl/zapatillas,zapatillas running mujer
+https://tusitio.cl/ropa,ropa deportiva santiago</div>
+      <p class="hint" style="margin-top:8px">Columnas opcionales: <code>sitename</code>, <code>lang</code></p>
+      <div class="btn-row" style="margin-top:12px">
+        <button class="btn-sm" onclick="downloadTemplate()">Descargar plantilla</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Cargar archivo</div>
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-in').click()">
+        <div class="icon">&#8645;</div>
+        <p>Arrastra tu CSV aquí o haz clic para seleccionar</p>
+        <small>Solo archivos .csv — todo se procesa en tu navegador</small>
+      </div>
+      <input type="file" id="file-in" accept=".csv" style="display:none" onchange="handleFile(this.files[0])">
+      <hr class="divider">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:13px;color:var(--text-muted)">¿Sin CSV? Prueba con datos de ejemplo:</span>
+        <button class="btn-sm" onclick="loadDemo()">Cargar demo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Preview + Brand -->
+  <div id="step-preview" style="display:none" class="fade-in">
+    <div class="card">
+      <div class="card-title">Marca</div>
+      <div class="row-2">
+        <div>
+          <label>Nombre de la marca (se añade al final de cada title)</label>
+          <input type="text" id="brand-input" placeholder="Ej: Adidas, Nike, SportChile..." oninput="updateBrandPreview()">
+          <div class="brand-preview" id="brand-preview">Vista previa: Zapatillas Running Mujer para Correr | <span id="brand-sample">Marca</span></div>
+        </div>
+        <div>
+          <label>Idioma por defecto</label>
+          <select id="lang-default">
+            <option value="es">Español</option>
+            <option value="en">English</option>
+            <option value="pt">Português</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">IA a usar</div>
+      <div style="display:flex;gap:10px;margin-bottom:4px">
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:14px;color:var(--text)">
+          <input type="radio" name="ai-select" value="claude" checked style="width:auto"> Claude
+        </label>
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:14px;color:var(--text)">
+          <input type="radio" name="ai-select" value="chatgpt" style="width:auto"> ChatGPT
+        </label>
+      </div>
+      <p class="hint">El prompt para ChatGPT incluye instrucciones extra de formato para evitar errores de JSON.</p>
+    </div>
+
+    <div class="card">
+      <div class="summary-bar">
+        <span class="label" id="preview-count"></span>
+        <button class="btn-sm inline-link" onclick="reset()">Cambiar archivo</button>
+      </div>
+      <div class="tbl-wrap" id="preview-table"></div>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="sendPromptToAI()">Copiar prompt</button>
+        <button onclick="reset()">Cancelar</button>
+        <span id="copy-confirm" style="font-size:12px;color:var(--ok-text);display:none">&#10003; Prompt copiado al portapapeles</span>
+      </div>
+      <p class="hint" id="ai-hint" style="margin-top:10px">Pega el prompt en <strong>claude.ai</strong>, copia la respuesta JSON y vuelve aquí para cargarla.</p>
+    </div>
+  </div>
+
+  <!-- STEP 3: Paste response -->
+  <div id="step-paste" style="display:none" class="fade-in">
+    <div class="card">
+      <div class="step-indicator"><span class="step-num">1</span> Abre <span id="paste-ai-name">claude.ai</span> y pega el prompt que copiaste</div>
+      <div class="step-indicator" style="margin-top:10px"><span class="step-num">2</span> Copia la respuesta JSON que te devolvió</div>
+      <div class="step-indicator" style="margin-top:10px"><span class="step-num">3</span> Pégala aquí abajo y presiona "Cargar respuesta"</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Respuesta JSON</div>
+      <textarea id="paste-area" rows="8" placeholder='Pega aquí el array JSON. Ejemplo:
+[{"url":"...","title":"...","description":"...","h1":"..."},...]'></textarea>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="loadResponse()">Cargar respuesta</button>
+        <button onclick="goBack()">Volver</button>
+        <button class="btn-sm" onclick="debugPaste()" style="margin-left:auto">Diagnóstico</button>
+      </div>
+      <p id="paste-error" style="font-size:12px;color:#a32d2d;margin-top:8px;display:none"></p>
+      <pre id="debug-out" style="display:none;margin-top:12px;font-size:11px;font-family:var(--mono);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px;white-space:pre-wrap;word-break:break-all;color:var(--text-muted)"></pre>
+    </div>
+  </div>
+
+  <!-- STEP 4: Results -->
+  <div id="step-results" style="display:none" class="fade-in">
+    <div class="card">
+      <div class="summary-bar">
+        <span class="label" id="result-summary"></span>
+        <div style="display:flex;gap:8px">
+          <button class="btn-sm" onclick="exportCSV()">Exportar CSV</button>
+          <button class="btn-sm btn-primary" onclick="reset()">Nuevo CSV</button>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-url">URL</th>
+              <th class="col-kw">Keyword</th>
+              <th class="col-title">Title</th>
+              <th class="col-h1">H1</th>
+              <th class="col-desc">Meta description</th>
+              <th class="col-st">Estado</th>
+              <th class="col-act">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="result-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let rows = [];
+let results = [];
+let lastPrompt = '';
+
+function updateBrandPreview() {
+  const b = document.getElementById('brand-input').value.trim();
+  document.getElementById('brand-sample').textContent = b || 'Marca';
+}
+
+function downloadTemplate() {
+  const csv = 'url,keyword,keyword_secundaria,sitename,lang\nhttps://tusitio.cl/zapatillas,zapatillas running mujer,comprar zapatillas chile,Mi Sitio,es\nhttps://tusitio.cl/ropa,ropa deportiva running,tienda ropa deportiva,Mi Sitio,es';
+  dl(csv, 'plantilla_seo.csv', 'text/csv');
+}
+
+function dl(content, filename, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.download = filename;
+  a.click();
+}
+
+function loadDemo() {
+  rows = [
+    { url: 'https://sportchile.cl/zapatillas-running', keyword: 'zapatillas running mujer', keyword_secundaria: 'comprar zapatillas chile', sitename: 'SportChile', lang: 'es' },
+    { url: 'https://sportchile.cl/ropa-deportiva', keyword: 'ropa deportiva running chile', keyword_secundaria: 'tienda ropa deportiva santiago', sitename: 'SportChile', lang: 'es' },
+    { url: 'https://sportchile.cl/accesorios', keyword: 'accesorios deporte santiago', keyword_secundaria: 'accesorios running online', sitename: 'SportChile', lang: 'es' },
+    { url: 'https://sportchile.cl/blog/como-elegir-zapatillas', keyword: 'cómo elegir zapatillas running', keyword_secundaria: 'guía zapatillas pisada', sitename: 'SportChile', lang: 'es' },
+    { url: 'https://sportchile.cl/tiendas', keyword: 'tienda deportiva las condes santiago', keyword_secundaria: 'local deportivo santiago centro', sitename: 'SportChile', lang: 'es' },
+  ];
+  showPreview();
+}
+
+function handleFile(file) {
+  if (!file) return;
+  Papa.parse(file, {
+    header: true, skipEmptyLines: true,
+    complete(res) {
+      rows = res.data.map(r => ({
+        url: (r.url || r.URL || r.Url || '').trim(),
+        keyword: (r.keyword || r.Keyword || r.keywords || '').trim(),
+        keyword_secundaria: (r.keyword_secundaria || r.keyword_secundary || r.secondary_keyword || '').trim(),
+        sitename: (r.sitename || r.site_name || '').trim(),
+        lang: (r.lang || r.language || '').trim().toLowerCase()
+      })).filter(r => r.url || r.keyword);
+      if (!rows.length) { alert('No se encontraron filas válidas en el CSV.'); return; }
+      showPreview();
+    },
+    error(e) { alert('Error al leer el CSV: ' + e.message); }
+  });
+}
+
+function showPreview() {
+  show('step-preview');
+  hide('step-upload');
+  document.getElementById('preview-count').textContent = rows.length + ' URLs listas para procesar';
+  const cols = ['URL', 'Keyword principal', 'Keyword secundaria', 'Sitename', 'Lang'];
+  document.getElementById('preview-table').innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr>${cols.map(c => `<th style="text-align:left;padding:8px 12px;font-size:11px;font-weight:500;color:var(--text-muted);border-bottom:1px solid var(--border);background:var(--bg)">${c}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(r => `<tr>
+        <td style="padding:8px 12px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;word-break:break-all">${r.url || '—'}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid var(--border)">${r.keyword || '—'}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text-muted)">${r.keyword_secundaria || '—'}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text-muted)">${r.sitename || '—'}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text-muted)">${r.lang || '—'}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+function getSelectedAI() {
+  return document.querySelector('input[name="ai-select"]:checked').value;
+}
+
+function updateAIHint() {
+  const ai = getSelectedAI();
+  const hint = document.getElementById('ai-hint');
+  if (hint) hint.innerHTML = ai === 'chatgpt'
+    ? 'Pega el prompt en <strong>chatgpt.com</strong>, copia la respuesta JSON y vuelve aquí para cargarla.'
+    : 'Pega el prompt en <strong>claude.ai</strong>, copia la respuesta JSON y vuelve aquí para cargarla.';
+}
+
+document.addEventListener('change', e => { if (e.target.name === 'ai-select') updateAIHint(); });
+
+function buildPrompt() {
+  const brand = document.getElementById('brand-input').value.trim();
+  const langDefault = document.getElementById('lang-default').value;
+  const ai = getSelectedAI();
+  const brandNote = brand
+    ? `\n- El title DEBE terminar con " | ${brand}" (incluyendo el pipe). El texto antes del pipe debe tener entre ${47 - brand.length} y ${57 - brand.length} caracteres para que el title completo quede entre 50 y 60 caracteres.`
+    : '';
+  const payload = rows.map(r => ({
+    url: r.url,
+    keyword: r.keyword,
+    ...(r.keyword_secundaria && { keyword_secundaria: r.keyword_secundaria }),
+    ...(r.sitename && { sitename: r.sitename }),
+    ...((r.lang || langDefault) !== 'es' && { lang: r.lang || langDefault })
+  }));
+
+  const baseRules = `Reglas estrictas por cada entrada:
+- title: entre 50 y 60 caracteres en total. Incluye la keyword principal de forma natural. Lenguaje atractivo y descriptivo, no una lista de palabras.${brandNote}
+- description: entre 150 y 160 caracteres EXACTOS. Incluye la keyword_secundaria de forma natural dentro del texto. Describe el valor real de la página con lenguaje humano y persuasivo. Incluye un call to action sutil. No repitas el title. No uses frases genéricas.
+- h1: entre 30 y 70 caracteres. Incluye la keyword principal. Debe tener un ángulo distinto al title: si el title es comercial, el H1 puede ser más directo o informativo, y viceversa. NO puede ser idéntico al title.`;
+
+  const chatgptExtra = `
+
+REGLAS DE FORMATO JSON — CRÍTICO, LEE ANTES DE RESPONDER:
+
+1. Responde ÚNICAMENTE con el array JSON. Sin texto antes, sin texto después, sin bloques \`\`\`json ni \`\`\`.
+2. Usa SOLO comillas dobles rectas ( " ) en claves y valores. Prohibido: comillas tipográficas " ", comillas simples ' '.
+3. Todos los valores deben ser texto plano literal. Esto es especialmente importante para las URLs: cópialas exactamente como las recibes, como una cadena de caracteres sin ningún tipo de interpretación, autolink, hipervínculo ni formato Markdown. Una URL debe verse así dentro del JSON: "url":"https://ejemplo.cl/pagina" — nunca así: "url":"[https://ejemplo.cl/pagina](https://ejemplo.cl/pagina)".
+4. PROHIBIDO usar corchetes [ ] o paréntesis ( ) en cualquier valor, incluyendo title, description y h1. Ningún valor debe contener sintaxis Markdown de ningún tipo.
+5. No incluyas saltos de línea ni tabulaciones dentro de los valores de string.
+6. No agregues comas después del último elemento de un objeto o array.
+7. Antes de responder, revisa cada campo: si ves un corchete o paréntesis en cualquier valor, corrígelo eliminando el formato y dejando solo el texto plano.
+
+Ejemplo correcto:
+[{"url":"https://ejemplo.cl/pagina","title":"Título limpio aquí","description":"Descripción limpia aquí sin formato.","h1":"H1 limpio aquí"}]
+
+Ejemplo INCORRECTO (nunca hagas esto):
+[{"url":"[https://ejemplo.cl/pagina](https://ejemplo.cl/pagina)","title":"[Título](https://ejemplo.cl) limpio"}]`;
+
+
+  const formatNote = ai === 'chatgpt' ? chatgptExtra : `\n\nResponde ÚNICAMENTE con un JSON array válido, sin explicaciones, sin markdown, sin texto adicional antes o después.`;
+
+  return `Genera metadata SEO para las siguientes URLs.
+
+${baseRules}${formatNote}
+
+Estructura exacta de cada objeto:
+{"url":"...","title":"...","description":"...","h1":"..."}
+
+URLs a procesar:
+${JSON.stringify(payload, null, 2)}`;
+}
+
+function sendPromptToAI() {
+  lastPrompt = buildPrompt();
+  const ai = getSelectedAI();
+  navigator.clipboard.writeText(lastPrompt).then(() => {
+    const confirm = document.getElementById('copy-confirm');
+    confirm.style.display = 'inline';
+    setTimeout(() => { confirm.style.display = 'none'; }, 2500);
+  });
+  const nameEl = document.getElementById('paste-ai-name');
+  if (nameEl) nameEl.textContent = ai === 'chatgpt' ? 'chatgpt.com' : 'claude.ai';
+  hide('step-preview');
+  show('step-paste');
+}
+
+function decodeEntities(str) {
+  try { return decodeURIComponent(str); } catch(e) { return str; }
+}
+
+function stripMarkdownLinks(str) {
+  // Limpia [texto](url) incluso con URLs que tengan %22 u otros encoded chars
+  return str.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');
+}
+
+function cleanFieldValue(val) {
+  if (typeof val !== 'string') return String(val || '');
+  return stripMarkdownLinks(val)
+    .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"')
+    .replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'")
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/\\"/g, '"')
+    .trim();
+}
+
+function extractByKeyBoundary(text, field, nextFields) {
+  // Extrae el valor de un campo buscando desde "field": hasta la siguiente key conocida o fin de objeto
+  const startRe = new RegExp('"' + field + '"\\s*:\\s*"');
+  const startMatch = text.match(startRe);
+  if (!startMatch) return '';
+  const valueStart = startMatch.index + startMatch[0].length;
+
+  // Busca el cierre: la próxima key conocida del objeto o el cierre }
+  const boundaries = nextFields.map(f => {
+    const m = text.slice(valueStart).search(new RegExp('"' + f + '"\\s*:'));
+    return m === -1 ? Infinity : m;
+  });
+  const boundary = Math.min(...boundaries, text.slice(valueStart).search(/"\s*}/) + 1 || Infinity);
+
+  let raw = text.slice(valueStart, valueStart + boundary);
+  // Quita la última comilla y coma si quedaron
+  raw = raw.replace(/",?\s*$/, '').replace(/^"/, '');
+  // Decodifica %XX que ChatGPT mete en las URLs de los Markdown links
+  raw = raw.replace(/%[0-9A-Fa-f]{2}/g, m => { try { return decodeURIComponent(m); } catch(e) { return m; } });
+  return cleanFieldValue(raw);
+}
+
+function splitObjectChunks(raw) {
+  const chunks = [];
+  let depth = 0, start = -1;
+  for (let i = 0; i < raw.length; i++) {
+    if (raw[i] === '{') { if (depth === 0) start = i; depth++; }
+    else if (raw[i] === '}') {
+      depth--;
+      if (depth === 0 && start !== -1) { chunks.push(raw.slice(start, i + 1)); start = -1; }
+    }
+  }
+  return chunks;
+}
+
+function loadResponse() {
+  const raw = document.getElementById('paste-area').value.trim();
+  const errEl = document.getElementById('paste-error');
+  errEl.style.display = 'none';
+  if (!raw) { showErr('Pega la respuesta primero.'); return; }
+
+  // Pre-limpieza: repara el patrón que genera ChatGPT donde la URL queda como
+  // "url":"[https://real.url/" y el title como "title":"Texto](https://...%22,...) texto real"
+  // Paso 1: quita el [ inicial dentro del valor de url: "[https:// → "https://
+  let cleaned = raw.replace(/"url"\s*:\s*"\[(\s*https?:\/\/)/g, '"url":"$1');
+  // Paso 2: quita el sufijo ](url-codificada) que ChatGPT pega al inicio del title/h1/description
+  // El patrón es: texto](https://cualquier-cosa-con-%22-o-normal) resto
+  cleaned = cleaned.replace(/\]\(https?:\/\/[^)]*?\)/g, '');
+  // Paso 3: limpieza estándar
+  cleaned = cleaned
+    .replace(/```json|```/g, '')
+    .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"')
+    .replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'")
+    .replace(/[\u2013\u2014]/g, '-')
+    .trim();
+
+  const normalized = cleaned;
+  let parsed = null;
+
+  // Intento 1: JSON.parse estándar
+  try {
+    const arrStart = normalized.indexOf('[');
+    const arrEnd = normalized.lastIndexOf(']');
+    const jsonStr = (arrStart !== -1 && arrEnd > arrStart) ? normalized.slice(arrStart, arrEnd + 1) : normalized;
+    const raw_parsed = JSON.parse(jsonStr);
+    if (Array.isArray(raw_parsed) && raw_parsed.length) {
+      parsed = raw_parsed.map(item => ({
+        url: cleanFieldValue(String(item.url || '').trim()),
+        title: cleanFieldValue(String(item.title || '')),
+        description: cleanFieldValue(String(item.description || '')),
+        h1: cleanFieldValue(String(item.h1 || '')),
+      }));
+    }
+  } catch(e) { parsed = null; }
+
+  // Intento 2: extracción por límites de keys (JSON roto con %XX o Markdown links)
+  if (!parsed) {
+    const chunks = splitObjectChunks(normalized);
+    if (chunks.length) {
+      parsed = chunks.map(chunk => ({
+        url:         extractByKeyBoundary(chunk, 'url',         ['title','description','h1']),
+        title:       extractByKeyBoundary(chunk, 'title',       ['description','h1','url']),
+        description: extractByKeyBoundary(chunk, 'description', ['h1','url','title']),
+        h1:          extractByKeyBoundary(chunk, 'h1',          ['url','title','description']),
+      }));
+    }
+  }
+
+  if (!parsed || !parsed.length) {
+    showErr('No se pudo leer la respuesta. Asegúrate de copiar solo el JSON que devolvió la IA.'); return;
+  }
+
+  // Mapear: intenta por URL exacta, luego sin protocolo, luego por índice posicional
+  results = rows.map((origRow, idx) => {
+    const normOrig = (origRow.url || '').trim().replace(/\/+$/, '').toLowerCase();
+    const normOrigNoProto = normOrig.replace(/^https?:\/\//, '');
+    const byUrl = parsed.find(item => {
+      const n = (item.url || '').trim().replace(/\/+$/, '').toLowerCase();
+      return n === normOrig || n.replace(/^https?:\/\//, '') === normOrigNoProto;
+    });
+    const match = byUrl || parsed[idx];
+    if (!match) return { ...origRow, title: '', description: '', h1: '' };
+    return {
+      ...origRow,
+      url: origRow.url,
+      title: match.title || '',
+      description: match.description || '',
+      h1: match.h1 || '',
+    };
+  });
+
+  // Si no hay rows cargados (usuario pegó directo), mostrar parsed tal cual
+  if (!rows.length) {
+    results = parsed;
+  }
+
+  renderResults();
+}
+
+function showErr(msg) {
+  const el = document.getElementById('paste-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function charStatus(n, min, max) {
+  return n >= min && n <= max
+    ? { cls: 'b-ok', label: 'OK', cc: 'ok-c' }
+    : { cls: 'b-warn', label: 'Revisar', cc: 'warn-c' };
+}
+
+function renderResults() {
+  hide('step-paste');
+  show('step-results');
+  const okCount = results.filter(r => charStatus((r.title||'').length,50,60).cls==='b-ok' && charStatus((r.description||'').length,150,160).cls==='b-ok' && charStatus((r.h1||'').length,30,70).cls==='b-ok').length;
+  document.getElementById('result-summary').textContent = `${results.length} URLs procesadas — ${okCount} OK, ${results.length - okCount} para revisar`;
+  document.getElementById('result-body').innerHTML = results.map((r, i) => {
+    const tLen = (r.title || '').length;
+    const dLen = (r.description || '').length;
+    const hLen = (r.h1 || '').length;
+    const tSt = charStatus(tLen, 50, 60);
+    const dSt = charStatus(dLen, 150, 160);
+    const hSt = charStatus(hLen, 30, 70);
+    const overall = tSt.cls === 'b-ok' && dSt.cls === 'b-ok' && hSt.cls === 'b-ok' ? 'b-ok' : 'b-warn';
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:11px;word-break:break-all">${r.url || '—'}</td>
+      <td style="color:var(--text-muted)">${r.keyword || '—'}</td>
+      <td>${r.title || '—'}<div class="char-note ${tSt.cc}">${tLen} chars — ${tSt.label}</div></td>
+      <td>${r.h1 || '—'}<div class="char-note ${hSt.cc}">${hLen} chars — ${hSt.label}</div></td>
+      <td>${r.description || '—'}<div class="char-note ${dSt.cc}">${dLen} chars — ${dSt.label}</div></td>
+      <td><span class="badge ${overall}">${overall === 'b-ok' ? 'OK' : 'Revisar'}</span></td>
+      <td><button class="btn-sm" onclick="copyRow(${i})">Copiar</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function copyRow(i) {
+  const r = results[i];
+  navigator.clipboard.writeText(`Title: ${r.title}\nH1: ${r.h1}\nMeta description: ${r.description}`);
+}
+
+function exportCSV() {
+  const headers = ['url', 'keyword', 'keyword_secundaria', 'sitename', 'lang', 'title', 'title_chars', 'h1', 'h1_chars', 'description', 'desc_chars'];
+  const csvRows = results.map(r => [
+    r.url || '', r.keyword || '', r.keyword_secundaria || '', r.sitename || '', r.lang || 'es',
+    r.title || '', (r.title || '').length,
+    r.h1 || '', (r.h1 || '').length,
+    r.description || '', (r.description || '').length
+  ]);
+  const csv = [headers, ...csvRows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  dl('\ufeff' + csv, 'seo_metadata.csv', 'text/csv;charset=utf-8');
+}
+
+function goBack() { hide('step-paste'); show('step-preview'); }
+
+function reset() {
+  rows = []; results = []; lastPrompt = '';
+  ['step-preview','step-paste','step-results'].forEach(hide);
+  show('step-upload');
+  document.getElementById('file-in').value = '';
+  document.getElementById('paste-area').value = '';
+  document.getElementById('brand-input').value = '';
+  document.getElementById('brand-sample').textContent = 'Marca';
+  document.getElementById('paste-error').style.display = 'none';
+  document.getElementById('copy-confirm').style.display = 'none';
+}
+
+function show(id) { const el = document.getElementById(id); if(el){el.style.display=''; el.classList.add('fade-in');} }
+function hide(id) { const el = document.getElementById(id); if(el) el.style.display='none'; }
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+
+document.getElementById('paste-area').addEventListener('paste', function(e) {
+  e.preventDefault();
+  const plain = (e.clipboardData || window.clipboardData).getData('text/plain');
+  const start = this.selectionStart;
+  const end = this.selectionEnd;
+  const current = this.value;
+  this.value = current.slice(0, start) + plain + current.slice(end);
+  this.selectionStart = this.selectionEnd = start + plain.length;
+});
+
+function debugPaste() {
+  const raw = document.getElementById('paste-area').value;
+  const out = document.getElementById('debug-out');
+  out.style.display = 'block';
+
+  const normalized = raw
+    .replace(/```json|```/g, '')
+    .replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"')
+    .replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'")
+    .replace(/[\u2013\u2014]/g, '-')
+    .trim();
+
+  let parseResult = 'ERROR';
+  let firstItem = {};
+  try {
+    const arrStart = normalized.indexOf('[');
+    const arrEnd = normalized.lastIndexOf(']');
+    const jsonStr = normalized.slice(arrStart, arrEnd + 1);
+    const p = JSON.parse(jsonStr);
+    parseResult = 'OK — ' + p.length + ' objetos';
+    firstItem = p[0] || {};
+  } catch(e) {
+    parseResult = 'FALLO: ' + e.message;
+  }
+
+  const charCodes = Array.from(raw.slice(0, 80)).map(c => c.charCodeAt(0));
+
+  out.textContent =
+    '--- TEXTO CRUDO (primeros 300 chars) ---\n' + raw.slice(0, 300) +
+    '\n\n--- CHAR CODES primeros 80 chars ---\n' + charCodes.join(' ') +
+    '\n\n--- RESULTADO JSON.PARSE ---\n' + parseResult +
+    '\n\n--- PRIMER OBJETO (url y title) ---\n' +
+    'url: ' + JSON.stringify(firstItem.url || '') +
+    '\ntitle: ' + JSON.stringify(firstItem.title || '');
+}
+</script>
+</body>
+</html>
